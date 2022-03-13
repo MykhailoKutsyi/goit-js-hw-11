@@ -9,7 +9,7 @@ export default async function getImages(page) {
             orientation: 'horizontal',
             safesearch: true,
             page: page,
-            per_page: 39,
+            per_page: 40,
         }
     }
 

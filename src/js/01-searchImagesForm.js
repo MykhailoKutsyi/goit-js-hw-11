@@ -1,5 +1,6 @@
 import '../css/styles.css';
 import fetchImages from './01-fetchImages';
+import markUpImages from './markUpImages';
 import { Notify } from 'notiflix/build/notiflix-notify-aio';
 import SimpleLightbox from "simplelightbox";
 import "simplelightbox/dist/simple-lightbox.min.css";
@@ -17,35 +18,47 @@ let imagesQuantityRemainder = 0;
 refs.loadMore.classList.add('button-hidden');
 
 refs.searchForm.addEventListener('submit', onSubmitForm);
-refs.loadMore.addEventListener('click', onLoadMore);
+refs.loadMore.addEventListener('click', pushFetch);
 
 function onSubmitForm(e) {
     e.preventDefault();
+    refs.loadMore.classList.add('button-hidden');
     if (refs.input.value) {
         refs.imagesList.innerHTML = '';
         page = 1;
         showNotify = 0;
-        fetchImages(page)
-            .then(data => markUp(data));
-        page += 1;
+        pushFetch();
     }
 }
 
-function onLoadMore() {
+function pushFetch() {
     fetchImages(page)
-        .then(data => markUp(data));
-    // console.log(page);
-    page += 1;
-
+            .then(data => markUp(data));
+        page += 1;
 }
 
 function markUp(data) {
     console.log(data);
+    if (notificationFunction(data)) {
+        refs.imagesList.insertAdjacentHTML('beforeend', markUpImages(data.hits));
 
+        gallery.refresh();
+
+        const { height: cardHeight } = document
+            .querySelector(".photo-card")
+            .firstElementChild.getBoundingClientRect();
+
+        window.scrollBy({
+            top: cardHeight,
+            behavior: "smooth",
+        });
+    }
+}
+
+function notificationFunction(data) {
     if (data.totalHits === 0) {
-        refs.loadMore.classList.add('button-hidden');
         Notify.failure('Sorry, there are no images matching your search query. Please try again.');
-        return;
+        return false;
     }
 
     if (showNotify == 0) {
@@ -54,53 +67,15 @@ function markUp(data) {
         imagesQuantityRemainder = data.totalHits;
     }
     imagesQuantityRemainder -= 39;
-        
-    refs.imagesList.insertAdjacentHTML('beforeend', data.hits.map(image => markUpImages(image)
-    ).join(''));
-    gallery.refresh();
-
-    const { height: cardHeight } = document
-        .querySelector(".photo-card")
-        .firstElementChild.getBoundingClientRect();
-
-    window.scrollBy({
-        top: cardHeight,
-        behavior: "smooth",
-    });
 
     if (imagesQuantityRemainder <= 0) {
-
-        Notify.warning("We're sorry, but you've reached the end of search results.");
         refs.loadMore.classList.add('button-hidden');
-        return;
+        setTimeout(() => Notify.warning("We're sorry, but you've reached the end of search results."), 1500);
     }
     else {
         refs.loadMore.classList.remove('button-hidden');
     }
-}
-
-function markUpImages(image) {
-    return `
-    <li class="photo-card">
-        <a class="photo-link" href="${image.largeImageURL}">
-            <img src="${image.webformatURL}" alt="${image.tags}" loading="lazy" />
-        </a>
-        <div class="info">
-            <p class="info-item">
-            <b>Likes: ${image.likes}</b>
-            </p>
-            <p class="info-item">
-            <b>Views: ${image.views}</b>
-            </p>
-            <p class="info-item">
-            <b>Comments: ${image.comments}</b>
-            </p>
-            <p class="info-item">
-            <b>Downloads: ${image.downloads}</b>
-            </p>
-        </div>
-    </li>
-    `
+    return true;
 }
 
 const gallery = new SimpleLightbox('.photo-list a', {
